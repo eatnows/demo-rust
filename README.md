@@ -218,6 +218,47 @@ fn main() {
 }
 ```
 
+문자열에 입력한 그대로를 출력할 수 있게 `raw text` 를 사용할 수 있다. `r#`
+```rust
+fn main() {
+    print!(r#"c:\thisdrivce\new_drive"#); // raw text
+    println!("Let me tell you
+    어떤 이야기를
+    봅시다");
+}
+```
+
+'어떤 이야기를' 문장 앞에 공백이 있기 때문에 해당 공백도 같이 출력됨.
+
+```rust
+fn main() {
+    let my_variable = &9;
+    println!("{:p}", my_variable);
+}
+```
+
+디버그 프린트. p는 포인터의 위치를 보여준다. 그런데 `my_variable = 9` 일 경우는 포인터의 위치를 알 수 없어 오류가 발생하고 
+`&` 을 붙여줘야 포인터의 위치를 알 수있다. 
+
+복잡하게 프린트를 할 수도 있다.
+
+Module std::fmt
+
+```rust
+fn main() { // {}
+    let title = "TODAY'S NEWS";
+    println!("{:-^30}", title);
+    let bar = "|";
+    println!("{: <15}{: >15}", bar, bar); // 패딩을 빈공간으로 왼쪽에 프린트하고 길이15, 오른쪽에도 똑같이
+    let a = "SEOUL";
+    let b = "TOKYO";
+    println!("{city1:-<15}{city2:->15}", city1 = a, city2 = b);
+}
+```
+`<` 왼쪽으로 프린팅, `>` 오른쪽으로 프린팅, `^` 중간으로 프린팅
+
+`-^30` 중간에 `-`을 패딩으로 30자
+
 
 # semicolon
 
@@ -276,10 +317,238 @@ fn main() {
 {}로 하면 안되지만 {:?} 하게되면 Debug print로 타입과 프로퍼티를 그대로 프로그래머전용 print 라고 보면된다.
 
 
+# Function
+
+```rust
+fn give_number(one: i32, two: i32) -> i32 {
+    one * two
+}
+
+fn main() {
+    let my_number = give_number(9, 8);
+    println!("{my_number}");
+}
+```
+
+```rust
+fn give_number(one: i16, two: i16) -> i16 {
+    let multiplied_by_ten = {
+        let first_number = 10;
+        first_number * one * two
+    };
+
+    multiplied_by_ten
+}
+
+fn main() {
+    let my_number = give_number(9, 1);
+    println!("{}", my_number);   // 90
+}
+```
+
+# mutability and shadowing
+
+mutability 바꿀 수 있는지 없는지. 
+Rust 는 immutable by default 이기 떄문에 변수를 만들면 기본적으로 값을 바꿀수가 없다.
+만약 변수의 값을 바꾸고 싶다면 `mut` 키워드를 사용해야한다.
+
+```rust
+fn main() {
+    let mut my_number = 10;
+    my_number = 9;
+}
+```
+
+shadowing 이라는 것은 같은 이름을 다시 쓰는 것을 말함.
+
+```rust
+fn main() {
+    let my_variable = 10;
+    let my_variable = "My variable"; // 새로 만듦
+    println!("{}", my_variable);
+    // 맨위 my_variable 에는 접촉할 수 없음.
+}
+```
+
+shadowing 은 원래 있던 변수를 없애버리는 것이 아니라 사용하지 못하게 
+잠시 막아버리는 것 shadowing 한 것이 사라지면 다시 원래 변수를 사용할 수 있음
+
+```rust
+fn main() {
+    let my_variable = 10;
+    println!("{}", my_variable); // 10
+    {
+        // shadowing
+        // block 안에서 선언된 변수이기 때문에 block scope 
+        let my_variable = "My variable";
+        println!("{}", my_variable); // My variable
+    }
+    println!("{}", my_variable); // 10
+}
+```
+
+# memory + references
+
+stack memory는 빠르고 그룹처럼 
+
+Rust는 reference 라는 특별하는 pointer를 쓴다. reference는 잠깐 빌리는 것
+
+```rust
+fn main() {
+    let my_number = 15; // This is an i32
+    let single_references = &my_number; // This is an &i32  / reference to my_number
+    // reference 가 나오는 함수를 썼는데 그 함수를 다른 reference 나오는 함수를 쓰면 reference to reference (&&) 
+    let double_references = &single_references; // This is an &&i32
+    let five_references = &&&&&my_number; // This is an &&&&&i32
+}
+```
+
+my_number가 데이터를 가지고있고 single_references 가 my_number 데이터를 볼수 있다. (그 데이터가 어디있는지 안다.)
 
 
+# String and &str
+
+```rust
+fn main() { // {}
+    // String = Sized type : 어떤 사이즈인지 알 수 있음. 데이터가 주로 힙에 있고, 얼마나 큰지 알 수 있음.
+    // str = dynamic type : &없이 그냥 str. 컴파일러가 스택에 얼마나 큰 지 알아야 하는데 알수가 없으니까 & 를 통해서 스택에서는 데이터의 크기를 알 수 있다.
+    let my_name = "David"; // &str
+    let my_name2 = "David".to_string(); // String
+    let other_name = String::from("David");
+
+    // growable + shrinkable
+    let mut my_other_name = "David3".to_string(); // 커지고 작아질 수 있는 타입
+    my_other_name.push('!'); // String 타입일 때만 추가가능. &str은 안 됨
+    println!("{}", my_other_name);
+
+    // String
+    // &str ref str "string slice"
+}
+```
+
+```rust
+fn main() { // {}
+    // reallocation
+    // 16비트 공간에 계속 뭘 추가하여 16비트를 넘어가면 2배씩 큰 공간에다가 복사하여 붙여넣기(재할당) 한다. -> reallocation
+
+    // String
+    // .capacity
+    // .push
+    // .push_str
+    // .pop
+    // with_capacity
+    // allocation
+
+    let mut my_name = "".to_string();
+    println!("Length is {} and Capacity is: {}", my_name.len(), my_name.capacity());
+    // my_name.push('!'); // 한글자만 가능
+    my_name.push_str("David!");
+    println!("Length is {} and Capacity is: {}", my_name.len(), my_name.capacity());
+    my_name.push_str(" and I live in seoul");
+    println!("Length is {} and Capacity is: {}", my_name.len(), my_name.capacity());
+    // print
+    // 0 0
+    // 6 8
+    // 26 26
 
 
+    let mut my_name = String::with_capacity(26); // 처음부터 26크기를  가지고 시작함
+    println!("Length is {} and Capacity is: {}", my_name.len(), my_name.capacity());
+    // my_name.push('!'); // 한글자만 가능
+    my_name.push_str("David!");
+    println!("Length is {} and Capacity is: {}", my_name.len(), my_name.capacity());
+    my_name.push_str(" and I live in seoul");
+    println!("Length is {} and Capacity is: {}", my_name.len(), my_name.capacity());
+    // print
+    // 0 26
+    // 6 26
+    // 26 26
+    // 초과하면 2배가 되어 52로 allocation 됨
+}
+```
 
 
+# const and static
 
+기본적으로 변수는 {} 안에 선언되면 {}안에서의 라이프사이클을 가진다. 
+
+global 변수는 2가지 방법으로 만들 수 있다.
+
+```rust
+// const
+// const 를 만들 때는 어떤 타입인지 명시를 해주어야 함.
+const NUMBER: i32 = 20;
+const HIGH_SCORE: i32 = 20;  // global scope
+// const 키워드는 아무곳에서나 사용이 가능. main() 에서도 사용이 가능하나 소용이 없다.
+
+// static
+// 같은 메모리 공간을 쓰는 보장이 있다.
+static LOW_SCORE: i32 = 0; 
+// static mut LOW_SCORE: i32 = 0; // unsafe
+
+// lifetime
+// 'static lifetime : 프로그램의 처음부터 끝까지 살 수 있음
+ 
+
+// 대문자로 변수명을 하지 않으면 컴파일러가 warning을 보내는데 그걸 없애줌
+// attribute 라고한다.
+#[allow(non_upper_case_globals)]
+const high_score: i32 = 10;
+
+fn main() {
+    let x = 8; // 'let' binding: i32
+    let my_name = "David"; // $'static str  : '가 하나있으면 static식으로 오래살 수 있다는 뜻.
+    
+}
+```
+
+```rust
+static mut LOW_SCORE: i32 = 0;
+
+fn main() {
+    unsafe { LOW_SCORE = 1; }
+}
+```
+
+`static` 는 `mut` 키워드를 통해서 선언된 변수의 값을 `unsafe` 키워드로 변경시킬 수 있다. 
+하지만 안 쓰는 것이 좋다.
+
+
+# returning a reference 
+OWNERSHIP - 소유권
+
+어떤 변수가 자기 데이터를 언제까지 해줄 수 있는지, 누가 데이터를 가지는지에 대한 개념.
+
+```rust
+fn main() {
+    let country = String::from("대한민국");
+    let ref_one = &country;
+    let ref_two = &country;
+
+    println!("Country is: {}", ref_one); // 대한민국
+}
+```
+
+```rust
+// 'static : 계속 존재할 거다
+fn return_it() -> &'static String {
+    let country = String::from("대한민국");
+    &country // return &country
+}
+
+// & = reference
+fn main() {
+    let my_country = return_it();
+}
+```
+
+`return_it()` 에서 `'static` 키워드를 사용해 static lifetime 이라고 명시를 해줘도 해당 코드는 실행이 되지 않는데, 그 이유는
+
+`return_it()` 안에서 선언된 `country` 는 `return_it()`의 `{}` 내에서만 살게되고 함수가 끝날 때 `country` 가 소멸되기 떄문에 
+그 `country`의 reference 를 반환 받는 `main()`의 my_country 는 안전하지 않기 떄문에 실행되지 않는다.
+
+# Mutable reference
+
+immutable reference / shared reference
+
+mutable reference / unique reference
