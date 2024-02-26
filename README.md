@@ -549,6 +549,238 @@ fn main() {
 
 # Mutable reference
 
-immutable reference / shared reference
+`&` immutable reference / shared reference
 
-mutable reference / unique reference
+`&mut` mutable reference / unique reference
+
+```rust
+// & : referencing
+// * : dereferencing : value 자체
+// && **
+fn main() {
+    let mut my_number = 9;
+    let num_ref = &mut my_number; // num_ref가 my_number 데이터를 바꿀 수 있다.
+
+    *num_ref = 10;
+
+    println!("Number is now {}", my_number);
+}
+```
+
+&mut &mut 과 같이 연속해서 사용하면 *도 연속해서 사용을 해주어야 한다.
+
+# references and shadowing
+
+```rust
+fn main() {
+    let mut number = 10;
+    let number_ref = &number;
+    let number_change = &mut number;
+    *number_change += 10;
+    println!("{}", number_ref);
+}
+```
+위 코드는 에러가 난다. 
+
+```rust
+fn main() {
+    let mut number = 10;
+    let number_change = &mut number;
+    *number_change += 10;
+    let number_ref = &number;
+    println!("{}", number_ref);
+}
+```
+이 코드에 경우 예전 러스트 버전이였으면 에러가 발생하지만 컴파일러가 계속 개발되어 현재는 정상동작한다.
+
+```rust
+fn main() {
+    // shadowing
+    let country = "대한민국"; // 사라진게 아니다.
+    let country_ref = &country; // 원래 만들었던 대한민국 변수의 데이터를 바라보고있음.
+    let country = 8;    // country 만 쓰면 컴파일러가 해당 값만 가져옴 // shadowing
+    println!("{}, {}", country_ref, country); // 대한민국, 8
+}
+```
+
+# references in functions
+
+```rust
+// OWNERSHIP
+// move semantics
+fn print_country(country_name: String) { // ref 가 아닌 String
+    println!("My country is {}", country_name);
+}
+
+fn main() {
+    let country = "대한민국".to_string();
+    print_country(country); // 이 function이 country에 소유권을 가지게 된다. 그래서 이제 이 main 함수에서는 country를 사용할 수 없게 됨
+    print_country(country); // 에러 발생!
+}
+```
+
+print_country에 파라미터가 $str이 아닌 String이기 때문에 main 함수에서 country를 인자로 넣어주면 
+country 변수의 소유권이 print_country 함수로 넘어간다.
+country 변수는 print_country 함수의 스코프 내에서만 사용이 가능해져 
+main 함수에서 country 변수를 사용할 수 없기 떄문에 두번째 호출에서 에러가 발생한다.
+
+```rust
+// OWNERSHIP
+// move semantics
+fn print_country(country_name: &String) { // ref 가 아닌 String
+    println!("My country is {}", country_name); // country 라는 변수의 value를 잠깐 보는것
+}
+
+fn main() {
+    let country = "대한민국".to_string();
+    print_country(&country); // reference만 주는것. 소유권이 넘어가지 않음
+    print_country(&country); // 정상 출력
+}
+```
+# mutable references and mut in functions
+
+```rust
+fn add_is_great(country_name: &mut String) {
+    country_name.push_str(" is great!");
+    println!("Now it says: {}", country_name);
+}
+
+fn main() {
+    let mut my_country = "캐나다".to_string();
+    // add_is_great(my_country); // by value
+    // add_is_great(&my_country); // by reference
+    add_is_great(&mut my_country); // by mutable reference
+    add_is_great(&mut my_country);
+}
+```
+
+```rust
+fn add_is_great(mut country_name: String) { // take by value, declare as mutable
+    country_name.push_str(" is great!");
+    println!("Now it says: {}", country_name);
+}
+
+fn main() {
+    let my_country = "대한민국".to_string(); // 바꿀수가 없음 mut 이 아님
+    add_is_great(my_country); // mut 파라미터에 넣어줬는데 잘됨
+}
+```
+
+my_country 가 먼저 소유권을 가지고 있고 add_is_great가 value의 소유권을 가지고 있으니까
+이제 main에서 my_country는 상관없고 add_is_great()가 country_name의 소유권자이기 때문에 mut으로 사용할 수도 있음. reference와 상관없음.
+
+# copy and clone
+
+```rust
+// It's trivial to copy the bytes
+
+// Ownership and copy types
+fn prints_number(number: i32) {
+    println!("{}", number);
+}
+
+fn prints_string(input: String) {
+    println!("{}", input);
+}
+// copy - copy types
+// clone - non-copy types
+fn main() {
+    let my_number = 8;
+    prints_number(my_number);
+    prints_number(my_number);
+
+    let my_country = "Austria".to_string();
+    prints_string(my_country.clone());  // 소유권이 넘어가 실행되지 않기 때문에 처음 사용 시 clone을 사용하게 끔 함
+    prints_string(my_country);
+}
+```
+
+copy type이란 `i32` `char` 이런 것들. owner ship 이랑 상관없이 사용할 수 있음.
+
+copy type이 아니면 my_number를 prints_number가 사용하면 소유권이 넘어가서 2번호출을 할 수 없지만 
+copy type이면 자동적으로 copy가 된다. (prints_number의 인자로 들어가는 my_number가 copy되어 인자로 사용된다.)
+
+# uninitialized variables and for loops
+
+```rust
+// uninitialized variable
+// control flow
+
+// possibly uninitialized = maybe doesn't have a value yet 
+fn loop_then_return(mut counter: i32) -> i32 { // mut를 앞에 쓰면 소유권을 받아서 mutable하게 쓰겠다.
+    loop {
+        counter += 1;
+        if counter % 50 == 0 {
+            // 102 / 50 -> 2 remainder 2
+            break;
+        }
+    }
+
+    counter
+}
+
+fn main() {
+    let my_number;
+
+    {
+        //복잡한 것들
+        let x = loop_then_return(43);
+        my_number = x
+    };
+
+    println!("{}", my_number);
+}
+```
+
+Rust 에서는 초기화를 하지 않고 변수를 선언만 하는 것을 지양한다고 함. 위 코드같은 스타일에 코드는 러스트스럽지 않다고함.
+
+# arrays
+
+```rust
+// Collection types
+// Array
+
+// &str
+fn main() {
+    let array = ["One", "Two"]; // [&str; 2]
+    let array2 = ["One", "Two", "Five"]; // array와 array2는 다른타입이다. // [&str; 3]
+
+    println!("Is array the same as array2? {}", array == array2);
+}
+```
+
+[] 를 이용해서 array를 만든다. rust에서는 배열에 들어가는 타입하고 크기에 따라서 아예 다른 타입이 된다.
+array는 그대로 추가할 수가 없고, 삭제할 수도 없는 기본적인 타입
+
+```rust
+fn main() {
+    let array = [0; 640]; // 0을 넣고 640번 해주세요.
+
+    println!("{:?}", array)
+}
+
+fn main() {
+    let array = ["1월", "2월"]; // indexing
+
+    println!("{}", array[0]) // zeroth
+}
+```
+```rust
+
+// buffer
+fn main() {
+    let array = ["1월", "2월"]; // indexing
+
+    println!("{:?}", array.get(1)) // zeroth
+    // Some(있으면) None(없으면) Option enum
+}
+```
+
+`array[0]` 과 같이 사용할 수있고 `array.get(1)` 이런식으로 array의 값을 가지고 올 수도 있다. 
+
+
+# slices
+
+
+
+
