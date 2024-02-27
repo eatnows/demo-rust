@@ -6,3 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# ^0.8.5의 축약형
+rand = "0.8.5"
+# 카고는 Crates.io로 부터 데이터의 복사본인 레지스트리 (registry) 에서
+# 해당 의존성이 필요로 하는 모든 것들의 최신버전을 가져온다.
+# Crates.io 는 러스트 생태계의 개발자들이 다른 사람들도 이용할 수 있도록 러스트 오픈 소스를 공개하는 곳.
