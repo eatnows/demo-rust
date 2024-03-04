@@ -279,3 +279,137 @@ fn main() {
 
 5는 five 함수의 반환 값이며, 이 떄문에 반환 타입을 `i32` 로 설정한 것이다. `;` 로 함수의 마지막 표현식을 구문으로 만든다면 값이 반환되지 않고,
 구문은 값을 평가하지 않기 때문에 `()` 로 표현되는 유닛 타입으로 표현된다.
+
+
+# 제어 흐름문
+러스트 코드의 실행 흐름을 제어하도록 해주는 가장 일반적인 재료는 `if` 표현식과 반복문이다.
+
+## if 표현식
+`if` 표현식은 여러분의 코드가 조건에 따라 분기할 수 있도록 해준다.
+
+```rust
+fn main() {
+    let number = 6;
+    
+    if number % 4 == 0 {
+        println!("4로 나누어지는 수");
+    } else if number % 3 == 0 {
+        println!("3으로 나누어지는 수");
+    } else if number % 2 == 0 {
+        println!("2로 나누어지는 수");
+    } else {
+        println!("4, 3, 2로 나누어지지 않는 수");
+    }
+}
+```
+
+모든 `if` 표현식은 `if` 라는 키워드로 시작하고 그 뒤에 조건이 온다. 
+조건식은 반드시 `bool` 타입이어야 한다. 조건식이 `bool` 이 아니라면 에러가 발생한다.
+Ruby나 JavaScript와 같은 언어와 달리 러스트는 boolean 타입이 아닌 값을 boolean 타입으로 자동 변환하지 않는다.
+`else if` 표현식을 너무 많이 사용하면 코드가 복잡해질 수 있으므로, 표현식이 두 개 이상이면 코드를 리팩터링하는 것이 좋다.
+
+`if` 는 표현식이기 떄문에 `let` 구문의 우변에 사용할 수 있다.
+```rust
+fn main() {
+    let condition = true;
+    let number = if condition { 5 } else { 6 };     // if 표현식을 계산한 결과값이 바인딩 될 것이다.
+    println!("The value of number is : {}", number);
+}
+```
+
+코드 블록은 블록 안의 마지막 표현식을 계산하고, 숫자는 그 자체로 표현식이다. `if` 표현식의 각 갈래의 결과값은 같은 타입이어야 한다.
+
+## 반복문을 이용한 반복
+러스트는 몇 가지 반복문(loop)을 제공하는데 이는 루프 본문의 시작부터 끝까지 수행한 뒤 다시 처음부터 수행한다.
+러스트에는 `loop`, `while` 그리고 `for` 라는 세 종류의 반복문이 있다.
+
+### loop로 코드 반복하기
+`loop` 키워드는 그만두라고 명시하기 전까지 영원히 코드 블록을 반복 수행한다.
+```rust
+fn main() {
+    let mut counter = 0;
+    
+    let result = loop {
+        counter += 1;
+        
+        if counter == 10 {
+            break counter * 2;
+        }
+    };
+    
+    loop {
+        println!("The result is {}!", result);
+    }
+}
+```
+루프 안에 `break` 키워드를 집어 넣으면 루프를 멈춰야 하는 시점을 프로그램에게 알려줄 수 있다.
+`break` 표현식 뒤에 반환하고자하는 값을 넣으면 연산의 결과를 이후에 코드에 전달할 수 있다.
+
+만일 루프 안에 루프가 있다면, `break`와 `continue`는 해당 지점의 바로 바깥쪽 루프에 적용된다.
+루프에 루프 라벨 (loop label)을 추가적으로 명시하면 `break` 나 `continue` 와 함께 이 키워드들이 
+바로 바깥쪽 루프 대신 라벨이 적힌 특정한 루프에 적용되도록 할 수 있다. **루프 라벨은 반드시 작은 따옴표로 시작해야 한다.**
+
+```rust
+fn main() {
+    let mut count = 0;
+    
+    'counting_up: loop {
+        println!("count = {count}");
+        let mut remaining = 10;
+        
+        loop {
+            println!("remaining = {}", remaining);
+            if remaining == 9 { 
+                break;
+            }
+            if count == 2 { 
+                break 'counting_up;
+            }
+            remaining -= 1;
+        }
+        
+        count += 1;
+    }
+    println!("End count = {}", count);
+}
+```
+
+### while을 이용한 조건 반복문
+```rust
+fn main() {
+    let mut number = 3;
+
+    while number != 0 {
+        println!("{number}")
+        
+        number -= 1;
+    };
+    println!("LIFTOFF")
+}
+```
+이 구조는 `loop`, `if`, `else`, `break` 를 사용할 때 필요하게 될 많은 중첩 구조를 제거하고 코드를 더 깔끔하게 만든다.
+조건식이 `true`로 계산되는 동안 코드가 실행되고, 그렇지 않으면 반복문을 벗어난다.
+
+### for를 이용한 컬렉션에 대한 반복문
+```rust
+fn main() {
+    let a = [10, 20, 30, 40, 50];
+    
+    for element in a {
+        println!("the value is: {element}");
+    }
+}
+```
+`for` 루프를 사용하면 여러분이 배열 내 값의 개수를 변경시키더라도 수정해야 할 다른 코드를 기억해둘 필요가 없어진다.
+표준 라이브러리가 제공하는 `Range` 타입을 이용하면 특정 횟수만큼의 반복문을 구현할 수 있는데, 
+`Range`는 어떤 숫자에서 시작하여 다른 숫자 종료 전까지의 모든 숫자를 차례로 생성해준다.
+
+```rust
+fn main() {
+    for number in (1..4).rev() { // rev 메서드는 범위값을 역순으로 만들어준다.
+        println!("{}", number);
+    }
+    println!("LIFTOFF!!!");
+    // 3! 2! 1! LIFTOFF!!!
+}
+```
