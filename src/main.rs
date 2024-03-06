@@ -1,7 +1,9 @@
 fn main() {
-    let condition = true;
+    let reference_to_nothing = dangle();
+}
 
-    let any = if condition { 5 } else { "string" };
+fn dangle() -> &String {
+    let s = String::from("hello");
 
-    println!("{}", any);
+    &s
 }
