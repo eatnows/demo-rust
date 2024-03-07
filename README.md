@@ -763,3 +763,152 @@ fn dangle() -> &String {            // String의 참조자를 반환
 }   // 여기서 s는 스코프 밖으로 벗어나고 버려진다. 해당 메모리는 해제된다.
 // 이런 경우에는 String인 s를 직접 반환해야한다. 그럼 소유권이 이동되며, 할당 해제도 되지 않는다.
 ```
+
+# 슬라이스 (slice)
+슬라이스는 컬렉션 (collection) 을 통째로 참조하는 것이 아닌, 컬렉션의 연속된 일련의 요소를 참조하도록 해준다.
+슬라이스는 참조자의 일종으로서 소유권을 갖지 않는다.
+
+슬라이스로 문제를 해결할 수 있음을 이해하기 위해서 먼저 슬라이스를 사용하지 않는 코드를 보겠다.
+```rust
+fn first_word(s: &String) -> usize {
+    let bytes = s.as_bytes();       // 바이트 배열로 변환
+    
+    // 배열의 반복자 (iterator)를 iter 매서드로 생성
+    // iter() 컬렉션의 각 요소를 반환
+    // enumerate() iter 의 각 결과값을 튜플로 감싸 변환
+    // 반환하는 튜플은 첫번째 요소가 인덱스, 두 번째 요소가 해당 요소의 참조자로 이루어져 있다.
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return i;
+        }
+        
+        s.len()
+    }
+}
+
+fn main() {
+    let mut s = String::from("hello world");
+    let word = first_word(&s);  // word는 값 5를 받는다. (공백이 5번째 인덱스)
+    
+    s.clear();  // 이 코드는 String 을 비워서 ""로 만든다.
+    
+    // 여기서 word에는 여전히 5가 들어있지만, 이 5를 의미있게 쓸 수 있는 문자열은 더 이상 없다.
+}
+```
+
+## 문자열 슬라이스
+문자열 슬라이스 (string slice)는 `String`의 일부를 가리키는 참조자를 말한다.
+```rust
+fn main() {
+    let s = String::from("hello world");
+
+    let hello = &s[0..5];
+    let world = &s[6..11];    
+}
+```
+만드는 방식은 `String` 참조자와 유사하지만, `hello`는 추가적인 `[0..5]`로 명시된 `String`의 일부분을 가리키는 참조자이다.
+`[starting_index..ending_index]` 는 `starting_index` 부터 시작해 `ending_index` 직전, 즉 1을 뺀 위치까지 슬라이스를 생성한다는 의미이다.
+슬라이스는 내부적으로 시작 위치, 길이를 데이터 구조에 저장하며, 길이 값은 `ending_index` 값에서 `starting_index` 값을 빼서 계산한다.
+
+`..` 범위 표현법은 인덱스 0부터 시작하는 경우, 앞의 값을 생략할 수 있다.
+```rust
+fn main() {
+    let s = String::from("hello");
+    
+    let slice = &s[0..2];
+    let slice = &s[..2];    // 의미가 같다.
+}
+```
+마찬가지로, `String` 맨 마지막 바이트까지 포함하는 슬라이스는 뒤의 값을 생략할 수 있다.
+```rust
+fn main() {
+    let s = String::from("hello");
+    
+    let len = s.len();
+    
+    let slice = &s[3..len];
+    let slice = &s[3..];    // 의미가 같다.
+}
+```
+앞뒤 모두 생략할 경우, 전체 문자열이 슬라이스로 생성된다.
+```rust
+fn main() {
+    let s = String::from("hello");
+    
+    let len = s.len();
+    
+    let slice = &s[0..len];
+    let slice = &s[..];     // 의미가 같음
+}
+```
+문자열 슬라이스를 나타내는 타입은 `&str` 로 작성한다.
+
+```rust
+fn first_word(s: &String) -> &str {
+    let bytes = s.as_bytes();
+    
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+    
+    &s[..];
+}
+```
+이제 first_word 가 반환하는 값은 원래 데이터와 분리된 값이 아니다. 
+이 값은 원래 데이터에서 슬라이스 시작 위치를 가리키니느 참조자와 슬라이스 요소 개수로 구성되어 있다.
+
+### 슬라이스로써의 문자열 리터럴
+문자열 리터럴은 바이너리 내에 저장된다.
+```rust
+let s = "Hello, world!";
+```
+여기서 `s`는 바이너리의 특정 지점을 가리키는 슬라이스이다. `&str` 타입이다. `&str`은 불변참조자이므로, 문자열 리터럴은 변경할 수 없다.
+
+### 문자열 슬라이스를 매개변수로 사용하기
+리터럴과 `String`의 슬라이스를 만들 수 있다는 걸 알고 나면 `first_word` 함수 정의를 다음과 같이 작성할 수 있다.
+```rust
+fn first_word(s: &String) -> &str {}
+```
+좀 더 경험이 많은 러스타시안은 `&String` 값과 `&str` 값 모두 사용 가능한 함수를 작성할 것이다.
+```rust
+fn first_word(s: &str) -> &str {}
+```
+문자열 슬라이스라면 이를 바로 인수로써 전달할 수 있다. `String` 이라면 `String` 의 슬라이스 혹은 `String`에 대한 참조자를 전달할 수 있다.
+이러한 유연성은 `역참조 강제 (deref coercions)` 기능을 이용한다.
+```rust
+fn main() {
+    let my_string = String::from("hello world");
+
+    // `first_word`는 `String`의 일부 혹은 전체 슬라이스에 대해 작동한다.
+    let word = first_word(&my_string[0..6]);
+    let word = first_word(&my_string[..]);
+    // 또한 `first_word`는 `String`의 전체 슬라이스와 동일한 `String`의 참조자에 대해서도 작동한다.
+    let word = first_word(&my_string);
+
+    let my_string_literal = "hello world";
+    
+    // `first_word`는 문자열 리터럴의 일부 혹은 전체 슬라이스에 대해 작동한다.
+    let word = first_word(&my_string_literal[0..6]);
+    let word = first_word(&my_string_literal[..]);
+    
+    // 문자열 리터럴은 곧 문자열 슬라이스이므로 슬라이스 문법없이 작동한다.
+    let word = first_word(&my_string_literal);
+}
+```
+
+### 그 외 슬라이스
+문자열 슬라이스는 문자열에만 특정되어 있다. 하지만 더 범용적인 슬라이스 타입도 존재한다.
+```rust
+let a = [1, 2, 3, 4, 5];
+```
+문자열 일부를 참조할 때 처럼 배열 일부를 참조하고 싶다면 다음과 같이 할 수 있다.
+```rust
+let a = [1, 2, 3, 4, 5];
+let slice = &a[1..3];
+
+assert_eq!(slice, &[2, 3]);
+```
+이 슬라이스는 `&[i32]` 타입이다. 동작 방식은 문자열 슬라이스와 동일하다.
+슬라이스의 첫 번째 요소를 참조하는 참조자와 슬라이스의 길이를 저장하며 동작한다. 이런 슬라이스는 모든 컬렉션에 사용이 가능하다.
