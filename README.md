@@ -912,3 +912,123 @@ assert_eq!(slice, &[2, 3]);
 ```
 이 슬라이스는 `&[i32]` 타입이다. 동작 방식은 문자열 슬라이스와 동일하다.
 슬라이스의 첫 번째 요소를 참조하는 참조자와 슬라이스의 길이를 저장하며 동작한다. 이런 슬라이스는 모든 컬렉션에 사용이 가능하다.
+
+# 구조체 (struct)
+구조체는 여러 값을 묶고 이름을 지어서 의미있는 묶음을 정의하는 데에 사용한다. 객체 지향 언어에 익숙한 분들이라면,
+구조체란 객체의 데이터 속성 (attribute)와 비슷한 것이다.
+
+구조체는 여러 개의 연관된 값을 가질 수 있다는 점에서 튜플과 비슷하다. 튜플처럼 구조체의 구성 요소들은 각각 다른 타입이 될 수 있다. (구성 요소에 이름을 붙일 수 있다.)
+구조체를 정의하려면 `struct` 키워드와 해당 구조체에 지어줄 이름을 입력한다. 이 후 중괄호 안에는 `필드 (field)` 라고 부르는 각 구성 요소의 이름 및 타입을 정의한다.
+
+```rust
+struct User {
+    active: bool,
+    username: String,
+    email: String,
+    sign_in_count: u64
+}
+```
+
+정의한 구조체를 사용하려면 해당 구조체의 각 필드에 대하여 구체적인 값을 정하여 구조체의 `인스턴스 (instance)`를 생성해야한다. 
+인스턴스를 생성하려면 먼저 구조체의 이름을 적고, 중괄호를 열고, 그 안에 필드의 이름 (key)과 해당 필드에 저장할 값을 키: 값 쌍의 형태로 추가해야한다.
+이 때 필드의 순서는 구조체를 정의했을 때와 동일하지 않아도 된다.
+
+```rust
+fn main() {
+    let user1 = User {
+        active: true,
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+    };
+}
+```
+구조체 내 특정 값은 `.` 표기법으로 가져올 수 있다. 가변 인스턴스라면 같은 방식으로 특정 필드의 값을 변경할 수도 있다.
+
+```rust
+fn main() {
+    let user1 = User {
+        active: true,
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+    };
+
+    user1.email = String::from("anotheremail@example.com");
+}
+```
+
+가변성은 해당 인스턴스 전체가 지니게 된다. 일부 필드만 가변으로 만들 수 없다. 함수의 마지막 표현식에 구조체의 새 인스턴스를 생성하는 표현식을 써서 해당 인스턴스를 암묵적으로 변환할 수 있다.
+
+```rust
+fn build_user(email: String, username: String) -> User {
+    User {
+        active: true,
+        username: username,
+        email: email,
+        sign_in_count: 1,
+    }
+}
+```
+변수명과 구조체 필드명이 같을 때는 `필드 초기화 축약법 (field init shorthand)` 를 사용해서 더 적은 타이핑으로 같은 기능을 구현할 수 있다.
+```rust
+fn build_user(email: String, username: String) -> User {
+    User {
+        active: true,
+        username,
+        email,
+        sign_in_count: 1,
+    }
+}
+```
+
+### 기존 인스턴스를 이용해 새 인스턴스를 만들 때 구조체 업데이트 문법 사용하기
+다른 인스턴스에서 대부분의 값을 유지한 채로 몇 개의 값만 바꿔 새로운 인스턴스를 생성하게되는 경우에 유용한 것은 바로 `구조체 업데이트 문법 (struct update syntax` 이다.
+```rust
+fn main() {
+    let user2 = User {
+        email: String::from("another@example.com"),
+        ..user1     // 나머지 필드는 구조체 업데이트 문법으로 user1의 필드 값을 사용
+    };
+}
+```
+`..` 문법은 따로 명시된 필드를 제외한 나머지 필드를 주어진 인스턴스의 필드 값으로 설정한다.
+user1의 값들과 동일한 값들로 나머지를 채우려면 `..user1` 를 제일 끝에 적어야 하지만,
+다른 필드들은 구조체의 정의 내에 있는 필드들의 순서와는 상관없이 마음대로 몇 개든 임의 순서로 적을 수 있다.
+
+구조체 업데이트 문법이 대입처럼 `=`를 사용한다는 점을 주목하라 이 구문은 데이터를 이동시킨다. 이 예제에서 user2를 생성한 이후에는
+user1을 더 이상 사용할 수 없는데, 이는 user1의 username 필드의 `String`이 user2로 이동되기 때문이다.
+user2에 email과 username의 String을 모두 제공하고 user1에서는 active와 sign_in_count 값만 사용한다면
+user2를 만든 이후에도 user1은 유효하다. active와 sign_in_count 모두 copy 트레이트를 구현한 타입으로 복사가 일어난다.
+
+### 명명된 필드 없는 구조체를 사용하여 다른 타입 만들기
+러스트는 튜플과 유사한 형태의 `튜플 구조체 (tuple structs)` 도 지원한다. 튜플 구조체는 구조체 자체에는 이름을 지어 의미를 주지만,
+이를 구성하는 필드에는 이름을 붙이지 않고 타입만 적는 형태이다. 
+튜플 구조체는 튜플 전체에 이름을 지어주거나 특정 튜플을 다른 튜플과 구분하고 싶을 때 유용하다.
+
+튜플 구조체의 정의는 일반 구조체처럼 `struct` 키워드와 구조체 명으로 시작되나, 그 뒤에는 타입들로 이루어진 튜플이 따라온다
+
+```rust
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
+
+fn main() {
+    let black = Color(0, 0, 0);
+    let origin = Point(0, 0, 0);
+}
+```
+구조체 내의 필드 구성은 같더라도 각각의 구조체는 별도의 타입이다. 여러 부분으로 해체할 수도 있고, `.` 과 인덱스로 개별 값에 접근할 수도 있다.
+
+### 필드가 없는 유사 유닛 구조체
+필드가 아예 없는 구조체를 정의할 수도 있습니다. 이는 유닛 타입 `()`와 비슷하게 동작하므로 `유사 유닛 구조체 (unit-like structs)` 라 지칭한다.
+유사 유닛 구조체는 어떤 타입에 대해 트레이트를 구현하고 싶지만 타입 내부에는 어떤 데이터를 저장할 필요는 없을 경우 유용하다.
+```rust
+struct AlwaysEqual;
+
+fn main() {
+    let subject = AlwaysEqual;
+}
+```
+AlwaysEqual을 정의하기 위해서 `struct` 키워드 뒤에 이름을 쓰고 바로 세미콜론을 붙였다. 중괄호도 괄호도 필요없다.
+나중에 AlwaysEqual 의 모든 인스턴스는 언제나 다른 모든 타입의 인스턴스와 같도록 하는 동작을 구현하며, 이미 알고 있는 결과값의 테스트 용도로 사용한다고 가정해 보자. 이런 동작에는 데이터가 필요 없을 것이다.
+
