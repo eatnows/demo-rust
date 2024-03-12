@@ -1032,3 +1032,84 @@ fn main() {
 AlwaysEqual을 정의하기 위해서 `struct` 키워드 뒤에 이름을 쓰고 바로 세미콜론을 붙였다. 중괄호도 괄호도 필요없다.
 나중에 AlwaysEqual 의 모든 인스턴스는 언제나 다른 모든 타입의 인스턴스와 같도록 하는 동작을 구현하며, 이미 알고 있는 결과값의 테스트 용도로 사용한다고 가정해 보자. 이런 동작에는 데이터가 필요 없을 것이다.
 
+
+# 메서드 문법
+`메서드 (method)` 는 함수와 유사하다. `fn` 키워드와 함수명으로 선언하고, 매개변수와 반환 값을 가지며, 다른 어딘가로부터 호출될 때 실행된다.
+하지만 메서드는 함수와 달리 구조체 컨텍스트에 정의되고 (열거형이나 트레이트 객체 안에 정의되기도 함), 첫 번째 매개변수가 항상 `self` 라는 차이점이 있다.
+`self` 매개변수는 메서드를 호출하고 있는 구조체 인스턴스를 나타낸다.
+
+### 메서드 정의하기
+```rust
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+}
+
+fn main() {
+    let rec1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+
+    println!(
+        "The area of the rectangle is {} square pixels.",
+        rec1.area()
+    );
+}
+```
+Rectangle의 컨텍스트에 함수를 정의하기 위해서, Rectangle에 대한 `impl (implementation)` 블록을 만드는 것으로 시작한다.
+이 `impl` 블록은 Rectangle 타입과 연관된다. 그런 다음 area 함수를 `impl`의 중괄호 안으로 옮기고 함수 시그니처의 첫 번째 매개변수를 `self`로 변경한다.
+`메서드 문법 (method syntax)` 를 사용해 Rectangle 인스턴스의 area 메서드를 호출할 수 있다. 메서드 문법은 인스턴스, 점, 메서드명, 괄호 및 인수 로 구성된다.
+
+area 시그니처에서는 `rectangle: Rectangle` 대신 `&self`를 사용했다. `&self`는 실제로는  `self: &self`를 줄인 것이다.
+`impl` 블록 내에서 `Self`는 `impl` 블록의 대상이 되는 타입의 별칭이다. 메서드는 `Self` 타입의 `self` 라는 이름의 매개변수를 첫 번째 매개변수로 가져야 하는데,
+그렇게 해야 첫 번째 매개변수 자리에 적은 `self` 형태의 축약형을 사용할 수 있다.
+메서드는 다른 매개변수가 그런 것처럼 `self`의 소유권을 가져올 수도, 지금처럼 `self`를 불변으로 빌려올 수도, 가변으로 빌려올 수도 있다.
+
+러스트는 다른 언어들처럼 구조체 필드에 대한 게터를 자동으로 만들지 않는다.
+
+### 더 많은 매개변수를 가진 메서드 
+메서드는 `self` 매개변수 뒤에 여러 매개변수를 가질 수 있으며 이 매개변수는 함수에서의 매개변수와 동일하게 기능한다.
+
+### 연관 함수
+`impl` 블록 내에 구현된 모든 함수를 `연관 함수 (associated function)` 라고 부르는데, 이는 `impl` 뒤에 나오는 타입과 모두 연관된 함수이기 때문이다.
+동작하는데 해당 타입의 인스턴스가 필요하지 않다면 `self` 를 첫 매개변수로 갖지 않는 연관 함수를 정의할 수도 있다. (따라서 메서드는 아니다.)
+
+메서드가 아닌 연관 함수는 구조체의 새 인스턴스를 반환하는 생성자로 자주 활용 된다. 이 함수들은 보통 `new` 라고 명명되는데,
+`new`는 이 언어에서 특별한 이름 혹은 키워드가 아니다.
+```rust
+impl Rectangle {
+    fn square(size: u32) -> Self {
+        Self {
+            width: size,
+            height: size,
+        }
+    }
+}
+```
+반환 타입 및 함수 본문의 `Self` 키워드는 `impl` 카워드 뒤에 적혀있는 타입의 별칭으로 여기서는 Rectangle이 된다.
+
+연관 함수를 호출할 땐 `let sq = Rectangle::square(3);` 처럼 구조체 명에 `::` 구문을 붙여서 호출한다. 연관 함수는 구조체의 네임스페이스 안에 있기 때문이다.
+
+### 여러개의 impl 블록
+각 구조체는 여러 개의 `impl` 블록을 가질 수 있다.
+```rust
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+}
+
+impl Rectangle {
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+}
+```
+위 코드에서는 `impl` 블록을 여러 개로 나눠야 할 이유는 전혀 없지만 이렇게 `impl` 블록을 여러개 작성할 수도 있다.
