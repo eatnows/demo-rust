@@ -1192,3 +1192,173 @@ enum Option<T> {
 
 `T`에 대한 연산을 수행하기 전에 `Option<T>` 를 `T`로 변환해야 한다. 이런 방식은 널로 인해 발생하는 가장 흔한 문제인, 실제로는 널인데 널이 아니라고 가정하는 상황을 발견하는데 도움이 된다.
 
+# match 제어 흐름 구조
+러스트는 `match` 라고 불리는 매우 강력한 제어 흐름 연산자를 가지고 있는데, 이는 일련의 패턴에 대해 어떤 값을 비교한 뒤 어떤 패턴에 매핑되었는지를 바탕으로 코드를 수행하도록 해준다.
+패턴은 리터럴 값, 변수명, 와일드카드 등 다양한 것으로 구성될 수 있다. `match`의 힘은 패턴의 표현성으로부터 오며 컴파일러는 모든 가능한 경우가 처리되는지 검사한다.
+
+```rust
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => {
+            println!("Lucky penny!");
+            1
+        },
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+```
+
+`match` 키워드 뒤에 표현식을 써줬는데, 위의 경우에는 `coin` 값이다. `if`에서 사용하는 조건식과 유사하지만, 큰 차이점이 있다.
+`if`를 사용할 경우에는 조건문에서 boolean 값을 반환해야 하지만, 여기서는 어떤 타입이든 가능하다.
+
+하나의 갈래 (arm)는 패턴과 코드 두 부분으로 이루어져 있다. 패턴과 실행되는 코드를 구분해주는 `=>` 연산자가 있다.
+각 갈래가 그냥 값을 반환하는 것 처럼 매치 갈래의 코드가 짧다면 중괄호는 보통 사용하지 않는다. 만일 매치 갈래 내에서 여러 줄의 코드를 실행시키고 싶다면 중괄호를 사용하고,
+그렇게 되면 갈래 뒤에 붙이는 쉼표는 옵션이 된다.
+
+
+### 값을 바인딩하는 패턴 
+매치 갈래의 또 다른 유용한 기능은 패턴과 매칭된 값들의 일부분을 바인딩할 수 있다는 것이다. 이것이 열거형의 배리언트로부터 어떤 값들을 추출할 수 있는 방법이다.
+
+```rust
+#[derive(debug)] // so we can inspect the state in a minute
+enum UsState {
+    Alabama,
+    Alaska,
+}
+
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter(UsState),
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => {}
+        Coin::Nickel => {}
+        Coin::Dime => {}
+        Coin::Quarter(state) => {
+            println!("State quarter from {:?}!", state);
+            25
+        }
+    }
+}
+```
+만일 `value_in_cents(Coin::Quarter(UsState::Alaska))` 를 호출했다면, `coin`은 `Coin::Quarter(UsState::Alaska)`가 될것이다.  
+`state`에 대한 바인딩 값 `UsState::Alaska`가 될 것이다.
+
+### Option<T> 을 이용하는 매칭
+`Option<T>` 값을 사용하려면 `Some` 일 때 실행돼서, `Some` 내의 `T` 값을 얻을 수 있는 코드가 필요하다.
+동전을 비교하는 대신 `Option<T>`의 배리언트를 비교하겠지만, `match` 표현식이 동작하는 방식은 동일하다.
+```rust
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        None => None,
+        Some(i) => Some(i + 1),
+    }
+}
+
+let five = Some(5);
+let six = plus_one(five);   // Some(5) -> Some( i + 1 ) -> Some(6)
+let none = plus_one(None);
+```
+`match`와 열거형을 조합하는 것은 다양한 경우에 유용하다.
+
+### 매치는 철저하다
+논의할 필요가 있는 `match`의 다른 관점이 있다. 갈래의 패턴들은 모든 가능한 경우를 다루어야 한다.
+```rust
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        Some(i) => Some(i + 1),
+    }
+}
+```
+여기서는 `None` 케이스를 다루지 않았고, 따라서 이 코드는 버그를 일으킬 것이다.(컴파일을 시도하면 에러가 발생한다)
+러스트의 매치는 철저하다. (exhaustive) 발생할 수 있는 경우 중 놓친 게 있음을 아는 것은 물론, 어떤 패턴을 놓쳤는가도 알고 있다.
+
+### 포괄 패턴과 _ 자리표시자
+열거형을 사용하면서 특정한 몇 개의 값들에 대해 특별한 동작을 하지만, 그 외의 값들에 대해서는 기본 동작을 취하도록 할 수 있다.
+```rust
+// 3이 나오면 새 멋진 모자를 얻고
+// 7을 굴리면 모자를 잃게된다.
+let dice_roll = 9;
+match dice_roll {
+    3 => add_fancy_hat(),
+    7 => remove_fancy_hat(),
+    other => move_player(other),
+}
+
+fn add_fancy_hat() {}
+fn remove_fancy_hat() {}
+fn move_player(num_spaces: u8) {}
+```
+나머지 모든 가능한 값을 다루는 마지막 갈래에 대한 패턴은 `other` 라는 이름을 가진 변수이다. `other` 갈래 쪽의 코드는 이 변숫값을 `move_player` 함수에 넘기는 데 사용한다.
+`u8` 이 가질 수 있는 모든 값을 나열하지 않았음에도 이 코드는 컴파일 되는데, 그 이유는 특별하게 나열되지 않은 나머지 모든 값에 대해 마지막 패턴이 매칭될 것이기 때문이다.
+이러한 포괄 (catch-all) 패턴은 `match`의 철저함을 만족시킨다. 패턴들은 순차적으로 평가되므로 마지막에 포괄적인 갈래를 위치시켜야 한다.
+포괄 패턴이 필요한데 그 포괄 패턴의 값을 사용할 필요는 없는 경우에 쓸 수 있는 패턴도 있다. `_` 는 어떠한 값이라도 매칭되지만, 그 값을 바인딩하지는 않는 특별한 패턴이다.
+이는 러스트에게 해당 값을 사용하지 않겠다는 것을 알려주므로 러스트는 사용되지 않는 변수에 대한 경고를 띄우지 않을 것이다.
+
+```rust
+// 주사위를 굴려 3 혹은 7이외의 숫자가 나왔다면 아무 일도 일어나지 않는다.
+
+let dice_roll = 9;
+match dice_roll {
+    3 => add_fancy_hat(),
+    7 => remove_fancy_hat(),
+    _ => (),
+}
+
+fn add_fancy_hat() {}
+fn remove_fancy_hat() {}
+```
+여기에서는 러스트에게 명시적으로 앞의 갈래에 매칭되지 않은 어떠한 값도 사용하지 않을 것이며, 어떠한 코드도 실행하지 않기를 원한다고 명시적으로 알려준 것이다.
+
+# if let 을 사용한 간결한 제어 흐름
+`if let` 문법은 `if` 와 `let` 을 조합하여 하나의 패턴만 매칭시키고 나머지 경우는 무시하도록 값을 처리하는 간결한 방법을 제공한다.
+```rust
+// 그 값이 Some 배리언트 일 경우에만 코드를 실행시키고 싶다.
+let config_max = Some(3u8);
+match config_max {
+    Some(max) => println!("The maximum is configured to be {}", max),
+    _ => (),
+}
+```
+이 값이 `Some` 이면 패턴 내에 있는 max에 Some 배리언트의 값을 바인딩하고 출력한다. `None` 값에 대해서는 아무처리도 하지 않으려고 한다.
+`match` 표현식을 만족시키려면 딱 하나의 배리언트 처리 후 `_ => ()` 를 붙여야 하는데, 이는 다소 성가신 보일러 플레이트 코드이다.
+그 대신, `if let` 을 이용하여 이 코드를 더 짧게 쓸 수 있다.
+```rust
+let config_max = Some(3u8);
+if let Some(max) = config_max {
+    printnln!("The maximum is configured to be {}", max);
+}
+```
+`if let`은 `=` 로 구분된 패턴과 표현식을 입력받는다. 이는 `match`와 동일한 방식으로 작동하는데, 여기서 표현식은 `match`에 주어지는 것이고 패턴은 이 `match`의 첫 번째 갈래와 같다.
+위의 경우 패턴은 `Some(max)` 이고 `max` 는 `Some` 내에 있는 값에 바인딩된다. 그렇게 되면 `match` 의 갈래 안에서 `max`를 사용했던 것과 같은 방식으로 `if let` 본문 블록 내에서 `max`를 사용할 수 있다.
+
+`if let` 을 사용하면 보일러 플레이트 코드를 덜 쓰게 된다. 하지만 `match`가 강제햇던 철저한 검사를 안하게 된다.
+즉 `if let`은 한 패턴에 매칭될 때만 코드를 실행하고 다른 경우는 무시하는 `match` 문을 작성할 때 사용하는 문법 설탕 `Syntax sugar` 라고 생각하면 된다.
+
+if let 과 함께 else 를 포함시킬 수 있다. else 뒤에 나오는 코드 블록은 `match` 표현식에서 `_` 케이스 뒤에 나오는 코드 블록과 동일하다.
+```rust
+let mut count = 0;
+match coin {
+    Coin::Quarter(state) => println!("State quarter from {:?}!", state),
+    _ => count += 1,
+}
+// 위와 아래는 동작이 같다.
+if let Coin::Quarter(state) = coin {
+    println!("State quarter from {:?}", state);
+} else {
+    count += 1
+}
+```
