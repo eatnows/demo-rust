@@ -1389,3 +1389,109 @@ Cargo.toml 을 텍스트 편집기로 열어보면 src/main.rs 가 따로 적시
 카고는 라이브러리 혹은 바이너리를 빌드할 때 이 크레이트 루트 파일을 `rustc` 에게 전달한다.
 만약 어떤 패키지가 src/main.rs 와 src/lib.rs 를 가지고 있다면 해당 패키지는 패키지와 같은 이름의 바이너리, 라이브러리 크레이트를 포함하게 된다.
 src/bin 디렉터리 내에 파일을 배치하면 각각의 파일이 바이너리 크레이트가 되어, 여러 바이너리 크레이트를 패키지에 포함할 수 있다.
+
+# 모듈을 정의하여 스코프 및 공개 여부 제어하기
+모듈, 아이템의 이름을 지정하는 경로 (path), 스코프에 경로를 가져오는 `use` 키워드, 아이템을 공개하는 데 사용하는 `pub` 키워드
+
+## 모듈 치트 시트
+- **크레이트 루트부터 시작**: 크레이트를 컴파일 할 때 컴파일러는 먼저 크레이트 루트 파일을 본다. (보통 라이브러리 크레이트의 경우 src/lib.rs 혹은 바이너리 크레이트의 경우 src/main.rs 이다.)
+- **모듈 선언**: 크레이트 루트 파일에는 새로운 모듈을 선언할 수 있다. `mod garden;` 이라는 코드로 'garden' 모듈을 선언할 수 있다. 컴파일러는 아래의 장소에서 이 모듈의 코드가 있는지 살펴볼 것이다.
+  - `mod garden` 뒤에 세미콜론 대신 중괄호를 써서 안쪽에 코드를 적은 인라인
+  - src/garden/vegetables.rs 파일 안
+  - src/garden/vegetables/mod.rs 파일 안
+- **서브모듈 선언**: 크레이트 루트가 아닌 파일에서는 서브모듈 (submodule)을 선언할 수 있다. 예를 들면 src/garden.rs 안에 `mod vegetables;` 를 선언할 수도 있다. 컴파일러는 부모 모듈 이름의 디렉터리 안쪽에 위치한 아래의 장소들에서 이 서브모듈 코드가 있는지 살펴볼 것이다.
+  - `mod vegetables` 뒤에 세미콜론 대신 중괄호를 써서 안쪽에 코드를 적은 인라인
+  - src/garden/vegetables.rs 파일 안
+  - src/garden/vegetables/mod.rs 파일 안
+- **모듈 내 코드로의 경로**: 일단 모듈이 크레이트의 일부로서 구성되면, 공개 규칙이 허용하는 한도 내에서라면 해당 코드의 경로를 사용하여 동일한 크레이트의 어디에서든 이 모듈의 코드를 참조할 수 있게 된다. 예를 들면, garden vegetables 모듈 안에 있는 `Asparagus` 타입은 `crate::garden::vegetables::Asparagus` 로 찾아 쓸 수 있다.
+- **비공개 vs 공개**: 모듈 내의 코드는 기본적으로 부모 모듈에게 비공개 (private) 이다. 모듈을 공개 (public) 으로 만들려면, `mod` 대신 `pub mod`를 써서 선언해야한다. 공개 모듈의 아이템들을 공개하려면 마찬가지로 그 선언 앞에 `pub` 키워드를 붙여야한다.
+- **`use` 키워드**: 어떤 스코프 내에서 `use` 키워드는 긴 경로의 반복을 줄이기 위한 어떤 아이템으로의 단축경로를 만들어 준다. `crate::garden::vegetables::Asparagus` 를 참조할 수 있는 모든 스코프에서 `use crate::garden::vegetables::Asparagus;` 로 단축경로를 만들 수 있으며, 그 이후부터는 스코프에서 이 타입을 사용하려면 `Asparagus` 만 작성해주면 된다.
+
+```text
+backyard
+├── Cargo.lock
+├── Cargo.toml
+└── src
+    ├── garden
+    │   └── vegetables.rs
+    ├── garden.rs
+    └── main.rs
+```
+
+크레이트 루트 파일은 src/main.rs 이고 내용은 아래와 같다.
+
+```rust
+use crate::garden::vegetables::Asparagus;
+
+pub mod garden;
+
+fn main() {
+    let plant = Asgaragus {};
+    println!("I'm growing {:?}!", plant);
+}
+```
+
+`pub mod garden;` 라인이 컴파일러에게 src/garden.rs 에 있는 코드를 포함할 것을 알려주고, src/garden.rs 는 아래와 같다.
+
+```rust
+pub mod vegetables;
+```
+
+여기 `pub mod vegetables;` 는 src/garden/vegetables.rs 의 코드 또한 포함되어야 함을 의미한다. 해당 파일은 아래와 같다.
+
+```rust
+#[derive(Debug)]
+pub struct Asparagus {}
+```
+
+## 모듈로 관련된 코드 묶기
+모듈은 크레이트의 코드를 읽기 쉽고 재사용하기도 쉽게끔 구조화를 할 수 잇게 해준다. 모듈 내의 코드는 기본적으로 비공개이므로, 모듈은 아이템의 공개 여부 (privacy) 를 제어하도록 해주기도 한다.
+비공개 아이템은 외부에서의 사용이 허용되지 않는 내부의 세부 구현이다. 모듈과 모듈 내 아이템을 선택적으로 공개할 수 있는데, 외부의 코드가 모듈 및 아이템을 의존하고 사용할 수 있도록 노출해 준다.
+
+```rust
+// 레스토랑 기능을 제공하는 라이브러리 크레이트
+// 접객 부서 (front of house): 호스트가 고객 안내, 웨이터가 주문 접수 및 결제, 바텐더가 음료를 만들어 주는 곳
+// 지원 부서 (back of house): 셰프, 요리사, 주방보조가 일하는 주방, 매니저가 행정 업무를 하는 곳
+mod front_of_house {
+  mod hosting {
+    fn add_to_waitlist() {}
+    
+    fn seat_at_table() {}
+  }
+  
+  mod serving {
+    fn take_order() {}
+    
+    fn serve_order() {}
+    
+    fn take_payment() {}
+  }
+}
+```
+
+`mod` 키워드와 모듈 이름 (위의 경우 `front_of_house`)을 지정하여 모듈을 정의한다. 모듈의 본문은 중괄호로 감싸져 있다.
+`hosting`, `serving` 처럼 모듈 내에는 다른 모듈을 넣을 수 있다. 모듈에는 구조체, 열거형, 상수, 트레이트, 함수 등의 아이템 정의 또한 가질 수 있다.
+
+모듈을 사용함으로써 관련된 정의들을 하나로 묶고 어떤 연관성이 있는지 이름을 지어줄 수 있다.
+
+앞서 src/main.rs 와 src/lib.rs 는 크레이트 루트라고 부른다고 했었다. 
+이 두 파일이 그런 이름을 갖게 된 이유는 모듈 트리 (module tree) 라고 불리는 크레이트 모듈 구조에서 최상위에 `crate` 라는 이름을 갖는 일종의 모듈로 형성되기 떄문이다.
+
+```text
+// 위 mod front_of_house 구조를 모듈 트리로 나타낸 모습
+crate
+ └── front_of_house
+     ├── hosting
+     │   ├── add_to_waitlist
+     │   └── seat_at_table
+     └── serving
+         ├── take_order
+         ├── serve_order
+         └── take_payment
+```
+
+트리는 어떤 모듈이 서로 어떻게 중첩되어 있는지 보여준다. `hosting` 모듈은 `front_of_house` 내에 위치한다. 이 트리는 어떤 모듈이 서로 형제 (sibling) 관계에 있는지 나타내기도 하는데, 
+이는 동일한 모듈 내에 정의되어 있음을 말한다.
+`hosting` 과 `serving` 은 `front_of_house` 모듈 내에 정의된 형제이다. 모듈 A가 모듈 B 안에 있으면 모듈 A는 모듈 B의 자식이며, 모듈 B는 모듈 A의 부모라고 말한다.
+전체 모듈 트리 최상위에 `crate` 라는 모듈이 암묵적으로 위치한다는 점을 기억하라.
+파일 시스템의 디렉터리처럼, 모듈로 코드를 조직화할 수 있다. 
