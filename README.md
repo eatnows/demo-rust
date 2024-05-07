@@ -1495,3 +1495,122 @@ crate
 `hosting` 과 `serving` 은 `front_of_house` 모듈 내에 정의된 형제이다. 모듈 A가 모듈 B 안에 있으면 모듈 A는 모듈 B의 자식이며, 모듈 B는 모듈 A의 부모라고 말한다.
 전체 모듈 트리 최상위에 `crate` 라는 모듈이 암묵적으로 위치한다는 점을 기억하라.
 파일 시스템의 디렉터리처럼, 모듈로 코드를 조직화할 수 있다. 
+
+## 경로로 모듈 트리의 아이템 참조하기
+러스트 모듈 트리에서 아이템을 찾는 방법은, 파일 시스템에서 경로를 사용하는 방법과 동일하다. 함수를 호출하려면 그 함수의 경로를 알아야 한다.
+1. 절대 경로 (absolute path) 는 크레이트 루트로부터 시작되는 전체 경로이다. 외부 크레이트로부터의 코드에 대해서는 해당 크레이트 이름으로 절대 경로가 시작되고 현재의 크레이트로부터의 코드에 대해서는 `crate` 리터럴로부터 시작된다.
+2. 상대 경로 (relative path) 는 현재의 모듈을 시작점으로 하여 `self`, `super` 혹은 현재 모듈내의 식별자를 사용한다.
+
+절대 경로, 상대 경로 뒤에는 `::` 으로 구분된 식별자가 하나 이상 따라온다.
+
+```rust
+mod front_of_house {
+  mod hosting {
+    fn add_to_waitlist() {}
+  }
+}
+
+pub fn eat_at_restaurant() {
+  // 절대 경로
+  crate::front_of_house::hosting::add_to_waitlist();
+  
+  // 상대 경로
+  front_of_house::hosting::add_to_waitlist();
+}
+```
+
+`add_to_waitlist` 함수는 `eat_at_restaurant` 함수와 동일한 크레이트에 정의되어 있으므로, 절대 경로의 시작점에 `crate` 키워드를 사용할 수 있다.
+
+싱대 경로의 경우 경로는 모듈 트리에서 `eat_at_restaurant` 함수와 동일한 위치에 정의되어 있는 `front_of_house` 모듈로 시작한다.
+
+아이템을 정의하는 코드와 호출하는 코드가 분리되어 있을 가능성이 높기 때문에 일반적으로 선호하는 경로는 절대 경로이다.
+
+### pub 키워드로 경로 노출하기
+러스트에서는 (함수, 메서드, 구조체, 열거형, 모듈 그리고 상수 등) 모든 아이템이 기본적으로 부모 모듈에 대해 비공개이다.
+
+자식 모듈 내 아이템은 부모 모듈 내 아이템을 사용할 수 있다. 이유는, 자식 모듈의 세부 구현은 감싸져서 숨겨져 있지만, 자식 모듈 내에서는 자신이 정의된 컨텍스트를 볼 수 있기 때문이다.
+
+```rust
+mod front_of_house {
+  pub mod hosting {
+    pub fn add_to_waitlist() {}
+  }
+}
+
+pub fn eat_at_restaurant() {
+  // 절대 경로
+  crate::front_of_house::hosting::add_to_waitlist();
+
+  // 상대 경로
+  front_of_house::hosting::add_to_waitlist();
+}
+```
+
+모듈을 공개했다고 해서 내용까지 공개되지는 않는다. 모듈의 `pub` 키워드는 상위 모듈이 해당 모듈을 가리킬 수 있도록 할 뿐, 그 내부 코드에 접근하도록 하는 것은 아니다.
+내부 함수에도 `pub` 키워드를 추가하여야 함수에 접근이 가능하다.
+
+### super로 시작하는 상대 경로 
+`super`로 시작하면 자기 부모 모듈부터 시작되는 상대 경로를 만들 수 있다. 이는 파일시스템 경로에서 `..`로 시작하는 것과 동일하다.
+이는 모듈이 부모 모듈과 밀접한 관련이 있지만 부모 모듈은 나중에 모듈 트리의 다른 어딘가로 옮겨질지도 모르는 경우 모듈 트리의 재조정을 편하게 만들어 준다.
+
+```rust
+fn deliver_order() {}
+
+mod back_of_house {
+  fn fix_incorrect_order() {
+    cook_order();
+    super::deliver_order();
+  }
+  
+  fn cook_order() {}
+}
+```
+
+`fix_incorrect_order` 함수는 `back_of_house` 모듈 내에 위치하므로, `super`는 `back_of_house` 의 부모 모듈, 즉 루트를 의미한다.
+
+
+### 구조체, 열거형을 공개하기
+`pub` 키워드로 구조체와 열거형을 공개할 수도 있지만, 몇가지 추가사항을 알아야한다.
+`pub` 을 쓰면 구조체는 공개되지만, 구조체의 필드는 비공개로 유지된다. 공개 여부는 각 필드마다 정할 수 있다.
+
+```rust
+mod back_of_house {
+  pub struct Breakfast {
+    pub toast: String,
+    seasonal_fruit: String,
+  }
+
+  impl Breakfast {
+    pub fn summer(toast: &str) -> Breakfast {
+      Breakfast {
+        toast: String::from(toast),
+        seasonal_fruit: String::from("peaches"),
+      }
+    }
+  }
+}
+```
+
+`back_of_house::Breakfast` 구조체는 비공개 필드를 갖고 있기 때문에, `Breakfast` 인스턴스를 생성할 공개 연관 함수 (예제 `summer` 함수)를 반드시 제공해야 한다.
+만약 `Breakfast` 구조체에 그런 함수가 존재하지 않을 경우, `Breakfast` 인스턴스를 생성할 수 없다.(비공개 필드인 `seasonal_fruit` 필드의 값을 지정할 방법이 없기 때문)
+
+반대로 열거형은 공개로 지정할 경우 모든 배리언트가 공개된다.
+
+```rust
+mod back_of_house {
+  pub enum Appetizer {
+    Soup,
+    Salad,
+  }
+}
+
+pub fn eat_at_restaurant() {
+  let order1 = back_of_house::Appetizer::Soup;
+  let order2 = back_of_house::Appetizer::Salad;
+}
+```
+
+`Appetizer` 열거형을 공개하였으니, `eat_at_restaurant` 함수에서 `Soup`, `Salad` 배리언트를 사용할 수 있다.
+열거형은 그 배리언트가 공개되지 않는다면 큰 쓸모가 없다. 열거형의 모든 배리언트에 대해 전부 `pub`을 붙이는 것은 귀찮은 일이 될 것이므로, 열거형의 배리언트는 기본적으로 공개이다.
+
+구조체의 경우 필드를 공개하지 않는 것이 종종 유용하므로, 구조체 필드는 `pub`을 명시하지 않는 한 기본적으로 모든 것이 비공개라는 일반적인 규칙을 따른다.
